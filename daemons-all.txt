@@ -1,0 +1,21 @@
+# All FRR daemons that are "=no" by default in /etc/frr/daemons.
+# zebra, staticd and mgmtd are always started by FRR's init script and
+# have no entry in the file, so they are intentionally left out here.
+bgpd
+ospfd
+ospf6d
+ripd
+ripngd
+isisd
+pimd
+pim6d
+ldpd
+nhrpd
+eigrpd
+babeld
+sharpd
+pbrd
+bfdd
+fabricd
+vrrpd
+pathd
