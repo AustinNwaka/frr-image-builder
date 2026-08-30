@@ -27,3 +27,16 @@ RUN set -eu; \
     [ -f /etc/frr/vtysh.conf ] || install -o frr -g frrvty -m 0640 /dev/null /etc/frr/vtysh.conf; \
     echo "---- resulting /etc/frr/daemons ----"; \
     grep -E '^[a-z0-9_]+=(yes|no)$' /etc/frr/daemons
+
+# PNETLAB's docker node type attaches the console via
+# `docker exec -it <container> /bin/bash`, which sources ~/.bashrc for
+# root. Auto-start vtysh there so consoling in drops straight into the
+# FRR CLI instead of a plain shell. Not exec'd - vtysh runs as a normal
+# foreground command, so "exit" from vtysh falls back to bash instead of
+# just disconnecting, in case a raw shell is ever needed.
+RUN printf '%s\n' \
+    'if [ -t 0 ] && [ -z "${VTYSH_AUTOSTART:-}" ]; then' \
+    '    export VTYSH_AUTOSTART=1' \
+    '    vtysh' \
+    'fi' \
+    >> /root/.bashrc

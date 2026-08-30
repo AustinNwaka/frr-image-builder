@@ -79,7 +79,10 @@ lets the docker CLI use whatever session `docker login` already set up.
      `/etc/frr/daemons`,
    - sets `vtysh_enable=yes`,
    - creates `/etc/frr/vtysh.conf` (owned `frr:frrvty`, mode `0640`) so
-     `vtysh` doesn't warn about a missing config file on every invocation.
+     `vtysh` doesn't warn about a missing config file on every invocation,
+   - appends an auto-start hook to `/root/.bashrc` so consoling into the
+     container drops straight into `vtysh` instead of a plain shell (see
+     below).
 5. Tags the result (`africodes/frrouting:<version>` by default).
 6. Optionally `docker push`es it (`--push`).
 
@@ -87,6 +90,19 @@ Per-daemon config files (`/etc/frr/bgpd.conf`, etc.) are intentionally
 *not* pre-created — FRR's own init script (`daemon_prep` in
 `frrcommon.sh`) creates them automatically, with correct ownership, the
 first time a container from the image starts.
+
+## Consoling straight into vtysh
+
+PNETLAB's docker node type attaches the console with `docker exec -it
+<container> /bin/bash`, which sources `~/.bashrc` for an interactive
+shell. The image appends a hook there that auto-starts `vtysh` on
+console attach — so opening the node's console lands you directly in the
+FRR CLI, no need to type `vtysh` first.
+
+It's a plain foreground command, not an `exec` replacement of the shell,
+so `exit` from vtysh drops you into a real root bash shell instead of
+disconnecting — useful if you need `ip addr`, package tools, log files,
+etc. `exit` again from that shell ends the console session as normal.
 
 ## Using the image in PNETLAB
 
