@@ -93,12 +93,44 @@ first time a container from the image starts.
 PNETLAB's docker node type (`/opt/unetlab/html/devices/docker/device_docker.php`)
 starts containers by referencing a local image tag directly — it doesn't
 need a Dockerfile or registry access on the PNETLAB host itself, just the
-tag present in `docker image ls`. Point (or create) a docker node template
-at the tag this script produces, e.g. `africodes/frrouting:10.7.0`, or
-pull it from Docker Hub on any other PNETLAB host once pushed.
+tag present in `docker image ls`.
+
+Rather than picking the generic "Docker" node type and typing the image
+tag in by hand every time, install the dedicated **FRRouting** node
+template in [`pnetlab-template/`](pnetlab-template):
+
+```bash
+./pnetlab-template/install.sh
+```
+
+This copies `frrouting.yml` into PNETLAB's template directories
+(`html/templates/intel`, `html/templates/amd`, `html/templates/device`).
+PNETLAB auto-discovers node templates by scanning those directories
+(`init.php`), and — for docker-type templates specifically — only shows
+one as enabled in the "Add a node" dialog once a locally present image
+tag contains the template's filename (`getTemplates()` in
+`includes/functions.php` runs `docker images | grep frrouting`). So the
+FRRouting entry lights up automatically as soon as `./build.sh` has
+produced any `*frrouting*` tag — no manual template enabling needed. This
+mirrors how the built-in cEOS template works (`templates/*/ceos.yml`),
+except FRR needs no custom PHP device class (`devices/docker/device_ceos.php`
+handles Arista-specific env vars/mounts) — the plain `device_docker.php`
+already does everything FRR needs (standard bridge networking, telnet
+console into a shell), so the template is YAML-only.
+
+Defaults baked into the template: 4 Ethernet interfaces, 512MB RAM,
+`--privileged` docker options (needed for the routing daemons to manage
+interfaces/routes), telnet console. All are editable per-node after
+adding it, same as any other node type.
+
+You will still need to type the exact image tag (e.g.
+`africodes/frrouting:10.7.0`) into the "Image" field when adding a node —
+PNETLAB doesn't offer a tag picker, just free text validated against
+what's locally available.
 
 ## Files
 
 - `Dockerfile` — the actual build steps (daemons, vtysh).
 - `build.sh` — CLI wrapper: argument parsing, validation, pull, build, push.
 - `daemons-all.txt` — canonical list of valid/default daemon names.
+- `pnetlab-template/` — the FRRouting PNETLAB node template and its installer.

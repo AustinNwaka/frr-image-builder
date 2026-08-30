@@ -1,0 +1,11 @@
+---
+type: docker
+name: FRRouting
+config_script: config_docker.py
+description: FRRouting (BGP, OSPF, IS-IS, ...)
+icon: Router-Green.png
+ethernet: 4
+console: telnet
+ram: 512
+docker_options: '--privileged'
+...
