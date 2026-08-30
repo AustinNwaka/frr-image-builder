@@ -128,9 +128,39 @@ You will still need to type the exact image tag (e.g.
 PNETLAB doesn't offer a tag picker, just free text validated against
 what's locally available.
 
+## Keeping Docker Hub up to date automatically
+
+[`.github/workflows/build-and-push.yml`](.github/workflows/build-and-push.yml)
+runs weekly (Mondays 06:00 UTC) and on manual dispatch:
+
+1. Resolves a target version — either the input given to a manual run, or
+   (on the schedule, and on a manual run with no input) the latest release
+   from [FRRouting/frr](https://github.com/FRRouting/frr/releases) on
+   GitHub.
+2. Checks whether that version already exists as an `africodes/frrouting`
+   tag on Docker Hub. Scheduled/auto-detected runs skip the build if it's
+   already there; a manual run with an explicit `version` input always
+   rebuilds and pushes, so you can re-run it after changing
+   `daemons-all.txt` or the `Dockerfile` without waiting for a new FRR
+   release.
+3. If a build is needed, logs into Docker Hub and runs
+   `./build.sh <version> --push`.
+
+**Required repo secrets** (Settings → Secrets and variables → Actions):
+
+- `DOCKERHUB_USERNAME` — `africodes`
+- `DOCKERHUB_TOKEN` — a Docker Hub Personal Access Token with Read & Write
+  scope (a separate token from the one used for interactive `docker
+  login` on this machine is best practice, so either can be revoked
+  independently).
+
+Trigger a manual run from the Actions tab, or via `gh workflow run
+"Build and push FRR image" -f version=10.7.0`.
+
 ## Files
 
 - `Dockerfile` — the actual build steps (daemons, vtysh).
 - `build.sh` — CLI wrapper: argument parsing, validation, pull, build, push.
 - `daemons-all.txt` — canonical list of valid/default daemon names.
 - `pnetlab-template/` — the FRRouting PNETLAB node template and its installer.
+- `.github/workflows/build-and-push.yml` — CI to auto-build/push new FRR releases.
