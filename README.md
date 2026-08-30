@@ -6,8 +6,8 @@ Builds a PNETLAB-ready FRR docker image from an upstream
 By default FRR's upstream image ships with every daemon disabled except
 `zebra`, `staticd` and `mgmtd`, and no `vtysh.conf`. This repo turns that
 into a one-line build step: pull the tag you want, enable the daemons you
-need, enable `vtysh`, and tag the result the way PNETLAB's docker node
-type expects (a plain local image tag such as `frrouting:10.7.0`).
+need, enable `vtysh`, and tag the result for both local PNETLAB use and
+Docker Hub (`africodes/frrouting`).
 
 ## Usage
 
@@ -19,13 +19,12 @@ type expects (a plain local image tag such as `frrouting:10.7.0`).
 `quay.io/frrouting/frr:10.7.0`) or a full image reference
 (`quay.io/frrouting/frr:10.7.0`, or any other registry/repo entirely).
 
-The resulting image is tagged `frrouting:<version>` by default, matching
-the existing convention already in use on this host (`frrouting:10.4.0`).
+The resulting image is tagged `africodes/frrouting:<version>` by default.
 
 ### Examples
 
 ```bash
-# Pull 10.7.0, enable every daemon (default), tag as frrouting:10.7.0
+# Pull 10.7.0, enable every daemon (default), tag as africodes/frrouting:10.7.0
 ./build.sh 10.7.0
 
 # Same, but spelling out the full upstream reference
@@ -37,8 +36,11 @@ the existing convention already in use on this host (`frrouting:10.4.0`).
 # Use a daemon list from a file (one name per line, # comments allowed)
 ./build.sh 10.7.0 --daemons-file my-daemons.txt
 
-# Tag the output differently
-./build.sh 10.7.0 -o frrouting-lab:10.7.0
+# Tag the output differently (e.g. keep the older frrouting:<version> convention)
+./build.sh 10.7.0 -o frrouting:10.7.0
+
+# Build and push to Docker Hub in one step (requires a prior `docker login -u africodes`)
+./build.sh 10.7.0 --push
 
 # See exactly what would happen without touching docker
 ./build.sh 10.7.0 --dry-run
@@ -49,9 +51,24 @@ the existing convention already in use on this host (`frrouting:10.4.0`).
 
 Run `./build.sh --help` for the full option list.
 
+## Pushing to Docker Hub
+
+`--push` runs `docker push` after a successful build. It assumes you've
+already authenticated in the current shell:
+
+```bash
+docker login -u africodes
+```
+
+Use a Docker Hub **Personal Access Token** (Account Settings → Personal
+access tokens, Read & Write scope) as the password, not your account
+password — required if 2FA is enabled, and preferred either way. The
+script never touches credentials itself; it just calls `docker push` and
+lets the docker CLI use whatever session `docker login` already set up.
+
 ## What it does
 
-1. Resolves the image reference and local output tag.
+1. Resolves the image reference and output tag.
 2. Resolves the daemon list (default: every daemon in
    [`daemons-all.txt`](daemons-all.txt) except `zebra`/`staticd`/`mgmtd`,
    which FRR always starts regardless of the daemons file) and validates
@@ -63,7 +80,8 @@ Run `./build.sh --help` for the full option list.
    - sets `vtysh_enable=yes`,
    - creates `/etc/frr/vtysh.conf` (owned `frr:frrvty`, mode `0640`) so
      `vtysh` doesn't warn about a missing config file on every invocation.
-5. Tags the result locally (`frrouting:<version>` by default).
+5. Tags the result (`africodes/frrouting:<version>` by default).
+6. Optionally `docker push`es it (`--push`).
 
 Per-daemon config files (`/etc/frr/bgpd.conf`, etc.) are intentionally
 *not* pre-created — FRR's own init script (`daemon_prep` in
@@ -76,10 +94,11 @@ PNETLAB's docker node type (`/opt/unetlab/html/devices/docker/device_docker.php`
 starts containers by referencing a local image tag directly — it doesn't
 need a Dockerfile or registry access on the PNETLAB host itself, just the
 tag present in `docker image ls`. Point (or create) a docker node template
-at the tag this script produces, e.g. `frrouting:10.7.0`.
+at the tag this script produces, e.g. `africodes/frrouting:10.7.0`, or
+pull it from Docker Hub on any other PNETLAB host once pushed.
 
 ## Files
 
 - `Dockerfile` — the actual build steps (daemons, vtysh).
-- `build.sh` — CLI wrapper: argument parsing, validation, pull, build.
+- `build.sh` — CLI wrapper: argument parsing, validation, pull, build, push.
 - `daemons-all.txt` — canonical list of valid/default daemon names.

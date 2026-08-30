@@ -18,8 +18,12 @@
 #   -f, --daemons-file PATH          File with one daemon name per line
 #                                    (# comments and blank lines ignored).
 #                                    Default: daemons-all.txt (all daemons).
-#   -o, --tag NAME                   Local image tag to produce.
-#                                    Default: frrouting:<version>
+#   -o, --tag NAME                   Image tag to produce.
+#                                    Default: africodes/frrouting:<version>
+#       --push                       docker push the built tag after a
+#                                    successful build. Assumes you've
+#                                    already run "docker login" for the
+#                                    target registry in this shell.
 #       --list-daemons               Print the known valid daemon names
 #                                    and exit.
 #       --no-pull                    Skip "docker pull" of the upstream
@@ -33,16 +37,18 @@
 #   ./build.sh quay.io/frrouting/frr:10.7.0
 #   ./build.sh 10.7.0 --daemons "bgpd ospfd isisd"
 #   ./build.sh 10.7.0 -o frrouting-lab:10.7.0
+#   ./build.sh 10.7.0 --push
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_REGISTRY_REPO="quay.io/frrouting/frr"
+DEFAULT_OUTPUT_REPO="africodes/frrouting"
 DEFAULT_DAEMONS_FILE="${SCRIPT_DIR}/daemons-all.txt"
 KNOWN_DAEMONS_FILE="${SCRIPT_DIR}/daemons-all.txt"
 
 usage() {
-    sed -n '2,33p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,37p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 IMAGE_REF=""
@@ -50,6 +56,7 @@ DAEMONS_OVERRIDE=""
 DAEMONS_FILE="${DEFAULT_DAEMONS_FILE}"
 LOCAL_TAG=""
 DO_PULL=1
+DO_PUSH=0
 DRY_RUN=0
 
 while [ $# -gt 0 ]; do
@@ -60,6 +67,8 @@ while [ $# -gt 0 ]; do
             DAEMONS_FILE="$2"; shift 2 ;;
         -o|--tag)
             LOCAL_TAG="$2"; shift 2 ;;
+        --push)
+            DO_PUSH=1; shift ;;
         --list-daemons)
             grep -vE '^\s*(#|$)' "${KNOWN_DAEMONS_FILE}"; exit 0 ;;
         --no-pull)
@@ -91,7 +100,7 @@ case "${IMAGE_REF}" in
 esac
 
 VERSION="${FULL_REF##*:}"
-LOCAL_TAG="${LOCAL_TAG:-frrouting:${VERSION}}"
+LOCAL_TAG="${LOCAL_TAG:-${DEFAULT_OUTPUT_REPO}:${VERSION}}"
 
 # Build the daemon list.
 if [ -n "${DAEMONS_OVERRIDE}" ]; then
@@ -125,8 +134,9 @@ if [ -n "${UNKNOWN}" ]; then
 fi
 
 echo "Upstream image : ${FULL_REF}"
-echo "Local tag      : ${LOCAL_TAG}"
+echo "Output tag     : ${LOCAL_TAG}"
 echo "Daemons enabled: ${DAEMONS}"
+echo "Push after build: $([ "${DO_PUSH}" = "1" ] && echo yes || echo no)"
 
 if [ "${DRY_RUN}" = "1" ]; then
     echo "(dry run, stopping here)"
@@ -147,3 +157,9 @@ docker build \
 echo
 echo "Built ${LOCAL_TAG} from ${FULL_REF}."
 echo "It will show up in 'docker image ls' and can be referenced by tag in a PNETLAB docker node template."
+
+if [ "${DO_PUSH}" = "1" ]; then
+    echo
+    echo "Pushing ${LOCAL_TAG} ..."
+    docker push "${LOCAL_TAG}"
+fi
