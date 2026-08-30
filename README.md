@@ -9,6 +9,14 @@ into a one-line build step: pull the tag you want, enable the daemons you
 need, enable `vtysh`, and tag the result for both local PNETLAB use and
 Docker Hub (`africodes/frrouting`).
 
+Pre-built images are published at
+[hub.docker.com/repository/docker/africodes/frrouting/general](https://hub.docker.com/repository/docker/africodes/frrouting/general) —
+pull one directly instead of building if you just need the image:
+
+```bash
+docker pull africodes/frrouting:10.7.0
+```
+
 ## Usage
 
 ```bash
